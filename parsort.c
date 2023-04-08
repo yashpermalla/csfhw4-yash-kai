@@ -78,6 +78,7 @@ void merge_sort(int64_t *arr, size_t begin, size_t end, size_t threshold) {
   if ((end - begin) <= threshold) {
     qsort(arr+begin, end - begin, sizeof(int64_t), compare_i64);
   } else {
+
     pid_t pid = fork();
     if (pid == -1) {
       exit(-1);
@@ -87,16 +88,31 @@ void merge_sort(int64_t *arr, size_t begin, size_t end, size_t threshold) {
       exit(0);
 
     }
-    else{
+
+    
+
+    pid_t pid_2 = fork();
+    if (pid_2 == -1) {
+      exit(-1);
+    } else if (pid_2 == 0) {
+    // this is now in the child process
       merge_sort(arr, begin + (end-begin)/2, end, threshold);
-      int wstatus;
+      exit(0);
+
+    }
+
+      int wstatus, wstatus_2;
       // blocks until the process indentified by pid_to_wait_for completes
       pid_t actual_pid = waitpid(pid, &wstatus, 0);
       if (actual_pid == -1) {
         exit(0);
       }
-    }
-
+      
+      pid_t actual_pid_2 = waitpid(pid_2, &wstatus_2, 0);
+      if (actual_pid_2 == -1) {
+        exit(0);
+      }
+      
     int64_t temp[end-begin];
     merge(arr, begin, (end+begin)/2, end, temp);
 
@@ -106,6 +122,7 @@ void merge_sort(int64_t *arr, size_t begin, size_t end, size_t threshold) {
 
   } 
 }
+
 
 int main(int argc, char **argv) {
   
@@ -121,16 +138,16 @@ int main(int argc, char **argv) {
   size_t threshold = (size_t) strtoul(argv[2], &end, 10);
   if (end != argv[2] + strlen(argv[2])) {
     fprintf(stderr, "Invalid threshold value!\n"); }; 
-/*
-  int64_t arr[] = {98, 47, 100, 123, 3, 342, 22, 22};
-  merge_sort(arr, 0, 8, 2);
+
+  /*int64_t arr[] = {98, 47, 100, 123, 3, 342, 22, 22};
+  merge_sort(arr, 0, 8, 3);
   printf("final output\n");
   for(int i = 0; i < 8; i++){
     printf("%ld\n", arr[i]);
-  }
-*/
+  }*/
+
   // open the file
-   int fd = open(filename, O_RDWR);
+  int fd = open(filename, O_RDWR);
   if (fd < 0) {
     fprintf(stderr, "File couldn't be opened!\n");
     exit(1);
@@ -154,11 +171,8 @@ int main(int argc, char **argv) {
   }
 
   // sort the data!
-  const char *str_threshold_arg = argv[2];
-  const int threshold_arg = atoi(str_threshold_arg);
-
-  size_t end_t = file_size_in_bytes / sizeof(int64_t);
-  merge_sort(data, 0, end_t, threshold_arg);
+  size_t end_arg = file_size_in_bytes / sizeof(int64_t);
+  merge_sort(data, 0, end_arg, threshold);
 
   // unmap and close the file
   int munmap_val = munmap(data, file_size_in_bytes);
