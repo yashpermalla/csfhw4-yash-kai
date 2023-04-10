@@ -114,9 +114,10 @@ void merge_sort(int64_t *arr, size_t begin, size_t end, size_t threshold) {
     int64_t* temp = malloc((end-begin)*sizeof(int64_t));
     merge(arr, begin, (end+begin)/2, end, temp);
 
-    for(size_t i = 0; i < end-begin; i++){
-      *(arr+begin+i) = temp[i];
-    }
+    //for(size_t i = 0; i < end-begin; i++){
+    //  *(arr+begin+i) = temp[i];
+    //}
+    memcpy(arr+begin, temp, (end-begin)*8);
 
     free(temp);
 
