@@ -10,15 +10,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Merge the elements in the sorted ranges [begin, mid) and [mid, end),
-// copying the result into temparr.
 
-int compare_i64(const void *a, const void *b){
-  const int64_t *x = a, *y = b;
-  if(*x < *y){
+int compare_i64(const void *x, const void *y){
+  if(*(const int64_t*)x < *(const int64_t*)y){
     return -1;
   }
-  else if (*x > *y){
+  else if (*(const int64_t*)x > *(const int64_t*)y){
     return 1;
   }
   else{
@@ -26,7 +23,8 @@ int compare_i64(const void *a, const void *b){
   }
 }
 
-//h
+// Merge the elements in the sorted ranges [begin, mid) and [mid, end),
+// copying the result into temparr.
 void merge(int64_t *arr, size_t begin, size_t mid, size_t end, int64_t *temparr) {
   int64_t *endl = arr + mid;
   int64_t *endr = arr + end;
@@ -52,27 +50,6 @@ void merge(int64_t *arr, size_t begin, size_t mid, size_t end, int64_t *temparr)
   }
 }
 
-// void merge_sort(int64_t *arr, size_t begin, size_t end, size_t threshold) {
-//   // TODO: implement
-
-   
-//   if ((end - begin) <= threshold) {
-//     qsort(arr+begin, end - begin, sizeof(int64_t), compare_i64);
-
-//   } else {
-//     merge_sort(arr, begin, begin + (end-begin)/2, threshold);
-//     merge_sort(arr, begin + (end-begin)/2, end, threshold);
-    
-//     int64_t temp[end-begin];
-
-//     merge(arr, begin, (end+begin)/2, end, temp);
-    
-//     for(size_t i = 0; i < end-begin; i++){
-//       *(arr+begin+i) = temp[i];
-//     }
-
-//   }
-// }
 void merge_sort(int64_t *arr, size_t begin, size_t end, size_t threshold) {
 
   if ((end - begin) <= threshold) {
@@ -81,49 +58,64 @@ void merge_sort(int64_t *arr, size_t begin, size_t end, size_t threshold) {
 
     pid_t pid = fork();
     if (pid == -1) {
-      exit(-1);
+      fprintf(stderr, "Fork failed to start a new process!\n");
+      exit(1);
     } else if (pid == 0) {
     // this is now in the child process
       merge_sort(arr, begin, begin + (end-begin)/2, threshold);
       exit(0);
-
     }
     
     pid_t pid_2 = fork();
     if (pid_2 == -1) {
-      exit(-1);
+      fprintf(stderr, "Fork failed to start a new process!\n");
+      exit(1);
     } else if (pid_2 == 0) {
     // this is now in the child process
       merge_sort(arr, begin + (end-begin)/2, end, threshold);
       exit(0);
-
     }
 
       int wstatus, wstatus_2;
       // blocks until the process indentified by pid_to_wait_for completes
       pid_t actual_pid = waitpid(pid, &wstatus, 0);
       if (actual_pid == -1) {
-        exit(0);
+        fprintf(stderr, "Error in handling waitpid!\n");
+        exit(1);
       }
       
       pid_t actual_pid_2 = waitpid(pid_2, &wstatus_2, 0);
       if (actual_pid_2 == -1) {
-        exit(0);
+        fprintf(stderr, "Error in handling waitpid!\n");
+        exit(1);
+      }
+
+      if (!WIFEXITED(wstatus) || !WIFEXITED(wstatus_2)) {
+        // subprocess crashed, was interrupted, or did not exit normally
+        fprintf(stderr, "Subprocess crashed, was interrupted, or did not exit normally!\n");
+        exit(1);
+      }
+      if (WEXITSTATUS(wstatus) != 0 || WEXITSTATUS(wstatus_2) != 0) {
+        // subprocess returned a non-zero exit code
+        // if following standard UNIX conventions, this is also an error
+        fprintf(stderr, "Subprocess returned a non-zero exit code!\n");
+        exit(1);
       }
       
     int64_t* temp = malloc((end-begin)*sizeof(int64_t));
     merge(arr, begin, (end+begin)/2, end, temp);
-
     //for(size_t i = 0; i < end-begin; i++){
     //  *(arr+begin+i) = temp[i];
     //}
     memcpy(arr+begin, temp, (end-begin)*8);
-
     free(temp);
 
   } 
-}
 
+
+
+  
+}
 
 int main(int argc, char **argv) {
   
@@ -138,7 +130,9 @@ int main(int argc, char **argv) {
   char *end;
   size_t threshold = (size_t) strtoul(argv[2], &end, 10);
   if (end != argv[2] + strlen(argv[2])) {
-    fprintf(stderr, "Invalid threshold value!\n"); }; 
+    fprintf(stderr, "Invalid threshold value!\n"); 
+    exit(1);
+  } 
 
   /*int64_t arr[] = {98, 47, 100, 123, 3, 342, 22, 22};
   merge_sort(arr, 0, 8, 3);
@@ -165,7 +159,6 @@ int main(int argc, char **argv) {
 
   // map the file into memory using mmap
   int64_t *data = mmap(NULL, file_size_in_bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-
   if (data == MAP_FAILED) {
     fprintf(stderr, "Unsuccessful mmaping!\n");
     exit(1);
@@ -175,13 +168,13 @@ int main(int argc, char **argv) {
   size_t end_arg = file_size_in_bytes / sizeof(int64_t);
   merge_sort(data, 0, end_arg, threshold);
 
-  // unmap and close the file
+  // unmap the file
   int munmap_val = munmap(data, file_size_in_bytes);
   if (munmap_val == -1) {
     fprintf(stderr, "Unsuccessful unmapping!\n");
     exit(1);
   }
-
+  // close the file
   int close_val = close(fd);
   if (close_val < 0) {
     fprintf(stderr, "File couldn't be closed!\n");
