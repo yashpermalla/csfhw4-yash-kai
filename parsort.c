@@ -128,6 +128,7 @@ int main(int argc, char **argv) {
   // process command line arguments
   const char *filename = argv[1];
   char *end;
+
   size_t threshold = (size_t) strtoul(argv[2], &end, 10);
   if (end != argv[2] + strlen(argv[2])) {
     fprintf(stderr, "Invalid threshold value!\n"); 
